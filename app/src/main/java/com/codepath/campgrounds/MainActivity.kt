@@ -12,6 +12,9 @@ import com.codepath.asynchttpclient.callback.JsonHttpResponseHandler
 import kotlinx.serialization.json.Json
 import okhttp3.Headers
 import org.json.JSONException
+import android.support.annotation.Keep
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 fun createJson() = Json {
     isLenient = true
@@ -29,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     // TODO: Create campgrounds list
+    private val campgrounds = mutableListOf<Campground>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +43,8 @@ class MainActivity : AppCompatActivity() {
 
         campgroundsRecyclerView = findViewById(R.id.campgrounds)
 
-        // TODO: Set up CampgroundAdapter with campgrounds
+        val campgroundAdapter = CampgroundAdapter(this, campgrounds)
+        campgroundsRecyclerView.adapter = campgroundAdapter
 
 
         campgroundsRecyclerView.layoutManager = LinearLayoutManager(this).also {
@@ -61,11 +66,16 @@ class MainActivity : AppCompatActivity() {
             override fun onSuccess(statusCode: Int, headers: Headers, json: JSON) {
                 Log.i(TAG, "Successfully fetched campgrounds: $json")
                 try {
-                    // TODO: Create the parsedJSON
+                    val parsedJson = createJson().decodeFromString(
+                        CampgroundResponse.serializer(),
+                        json.jsonObject.toString()
+                    )
 
-                    // TODO: Do something with the returned json (contains campground information)
+                    parsedJson.data?.let{ list ->
+                        campgrounds.addAll(list)
 
-                    // TODO: Save the campgrounds and reload the screen
+                        campgroundAdapter.notifyDataSetChanged()
+                    }
 
                 } catch (e: JSONException) {
                     Log.e(TAG, "Exception: $e")
@@ -75,3 +85,4 @@ class MainActivity : AppCompatActivity() {
         })
     }
 }
+// test git change
