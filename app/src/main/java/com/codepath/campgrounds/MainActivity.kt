@@ -13,6 +13,9 @@ import kotlinx.serialization.json.Json
 import okhttp3.Headers
 import org.json.JSONException
 import android.support.annotation.Keep
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -45,6 +48,22 @@ class MainActivity : AppCompatActivity() {
 
         val campgroundAdapter = CampgroundAdapter(this, campgrounds)
         campgroundsRecyclerView.adapter = campgroundAdapter
+        lifecycleScope.launch {
+            (application as CampgroundApplication).db.campgroundDao().getAll().collect { databaseList ->
+                databaseList.map { entity ->
+                    Campground(
+                        entity.name,
+                        entity.description,
+                        entity.latLong,
+                        listOf(CampgroundImage(entity.imageUrl, null))
+                    )
+                }.also { mappedList ->
+                    campgrounds.clear()
+                    campgrounds.addAll(mappedList)
+                    campgroundAdapter.notifyDataSetChanged()
+                }
+            }
+        }
 
 
         campgroundsRecyclerView.layoutManager = LinearLayoutManager(this).also {
@@ -71,10 +90,18 @@ class MainActivity : AppCompatActivity() {
                         json.jsonObject.toString()
                     )
 
-                    parsedJson.data?.let{ list ->
-                        campgrounds.addAll(list)
-
-                        campgroundAdapter.notifyDataSetChanged()
+                    parsedJson.data?.let { list ->
+                        lifecycleScope.launch(Dispatchers.IO) {
+                        (application as CampgroundApplication).db.campgroundDao().deleteAll()
+                        (application as CampgroundApplication).db.campgroundDao().insertAll(list.map {
+                            CampgroundEntity(
+                                name = it.name,
+                                description = it.description,
+                                latLong = it.latLong,
+                                imageUrl = it.imageUrl
+                            )
+                        })
+                        }
                     }
 
                 } catch (e: JSONException) {
